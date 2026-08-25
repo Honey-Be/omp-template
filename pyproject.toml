@@ -1,0 +1,14 @@
+[project]
+name = "oh-my-pi-workspace"
+version = "1.1.0"
+description = "Oh-My-Pi failover workspace environment"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "pyautogui>=5.0.0",
+    "pytesseract>=0.3.13",
+    "pillow>=10.2.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
