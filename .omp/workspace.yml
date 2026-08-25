@@ -1,0 +1,73 @@
+# Oh-My-Pi Failover Workspace Configuration
+name: "oh-my-pi-failover-workspace"
+version: "1.1.1"
+
+modelsConfig: ".omp/models.yml"
+systemPrompt: ".omp/SYSTEM.md"
+
+defaultModel: "claude_opus_primary"
+
+# 1. Plan 모드 미세 설정 (에이전트 역할별 리소스 차등 할당)
+planMode:
+  enabled: true
+  planCreation:
+    model: "claude_fable_primary"
+    effort: "max"
+    workflows: ["architecture_review", "security_audit", "dependency_check"]
+  planExecution:
+    model: "claude_opus_primary"
+    effort: "xhigh"
+    workflows: ["code_generation", "unit_testing"]
+
+# 2. CUA(Computer Use) 선택적 제어 및 허용 범위
+cua:
+  enabled: true
+  scope:
+    allowShellExecution: true
+    allowScreenCapture: true
+    allowUIAutomation: true
+    # UI 클릭이 허용되는 특정 애플리케이션 창 이름 (비어있으면 전체 허용)
+    allowedWindowTitles: []
+
+# 3. Model Context Protocol (MCP) 서버 연동
+mcp:
+  enabled: true
+  servers:
+    local_filesystem:
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "./", "../shared_data"]
+    sqlite_memory:
+      command: "uv"
+      args: ["run", "--python", "3.14", ".omp/scripts/mcp_sqlite_server.py"]
+
+# 4. 보안 및 권한 설정
+security:
+  # 기본적으로 쉘 명령어는 자동 실행을 허용하되, 특정 명령어에 대해서만 승인을 강제합니다.
+  requireUserApproval: false
+  requiresApprovalCommands:
+    - "uv add"
+    - "uv remove"
+    - "uv pip"
+    - "podman rm"
+  allowedCommands:
+    - "uv"
+    - "just"
+    - "podman"
+    - "cat"
+    - "ls"
+    - "grep"
+  # 민감 정보(Private Key 등) 유출 감지 설정
+  privacyScanner:
+    enabled: true
+    patterns:
+      - "(?i)-----BEGIN[ A-Z]*PRIVATE KEY-----"
+      - "(?i)(api[_-]?key|secret|token)[\"'\s:=]+[A-Za-z0-9_\-]{16,}"
+      - "sk-[a-zA-Z0-9]{32,}"
+
+# 5. 타 프로젝트와의 로컬 소통 및 Read-Only 메모리 접근 권한
+crossProject:
+  memoryReadAccess:
+    - "../other-project/.omp/data/context.db"
+  ipcDirectories:
+    enabled: true
+    baseDir: "./"
