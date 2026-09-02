@@ -4,7 +4,9 @@ version = "1.1.0"
 description = "Oh-My-Pi failover workspace environment"
 requires-python = ">=3.14,<3.15"
 dependencies = [
-    "pyautogui>=5.0.0",
+    # pyautogui 는 PyPI 최신이 0.9.54 입니다. 이전의 `>=5.0.0` 은 존재하지 않는 버전을
+    # 요구해 `uv sync` / `uv run` 이 신선한 워크스페이스에서 항상 해결 실패했습니다.
+    "pyautogui>=0.9.54",
     "pytesseract>=0.3.13",
     "pillow>=10.2.0"
 ]
@@ -12,3 +14,8 @@ dependencies = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+# hatchling 은 무엇을 패키징할지 알아야 합니다. 이 섹션이 없으면 `uv sync` 가 프로젝트
+# 자체를 빌드하는 단계에서 "Unable to determine which files to ship" 로 실패합니다.
+[tool.hatch.build.targets.wheel]
+packages = ["."]

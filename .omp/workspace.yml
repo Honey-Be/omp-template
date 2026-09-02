@@ -1,5 +1,4 @@
-# Oh-My-Pi Failover Workspace Configuration
-name: "oh-my-pi-failover-workspace"
+name: "omp-template"
 version: "1.1.1"
 
 modelsConfig: ".omp/models.yml"
@@ -7,42 +6,37 @@ systemPrompt: ".omp/SYSTEM.md"
 
 defaultModel: "claude_opus_primary"
 
-# 1. Plan 모드 미세 설정 (에이전트 역할별 리소스 차등 할당)
 planMode:
   enabled: true
+  # planCreation normally runs on claude_fable_primary, but that model is
+  # currently failing and failoverRouting no longer lists it. A directly named
+  # model is not covered by failover, so it is switched here explicitly rather
+  # than left to fail. Restore by changing model back to claude_fable_primary.
   planCreation:
-    model: "claude_fable_primary"
-    effort: "max"
+    model: "claude_opus_primary"
+    effort: "max+workflow"
     workflows: ["architecture_review", "security_audit", "dependency_check"]
   planExecution:
     model: "claude_opus_primary"
     effort: "xhigh"
     workflows: ["code_generation", "unit_testing"]
 
-# 2. CUA(Computer Use) 선택적 제어 및 허용 범위
 cua:
   enabled: true
   scope:
     allowShellExecution: true
     allowScreenCapture: true
     allowUIAutomation: true
-    # UI 클릭이 허용되는 특정 애플리케이션 창 이름 (비어있으면 전체 허용)
     allowedWindowTitles: []
 
-# 3. Model Context Protocol (MCP) 서버 연동
 mcp:
   enabled: true
   servers:
     local_filesystem:
       command: "npx"
       args: ["-y", "@modelcontextprotocol/server-filesystem", "./", "../shared_data"]
-    sqlite_memory:
-      command: "uv"
-      args: ["run", "--python", "3.14", ".omp/scripts/mcp_sqlite_server.py"]
 
-# 4. 보안 및 권한 설정
 security:
-  # 기본적으로 쉘 명령어는 자동 실행을 허용하되, 특정 명령어에 대해서만 승인을 강제합니다.
   requireUserApproval: false
   requiresApprovalCommands:
     - "uv add"
@@ -56,18 +50,26 @@ security:
     - "cat"
     - "ls"
     - "grep"
-  # 민감 정보(Private Key 등) 유출 감지 설정
+    - "cargo"
+    - "curl"
+    - "jq"
   privacyScanner:
     enabled: true
+    # 아래 목록은 .omp/scripts/privacy_filter.py 의 SENSITIVE_PATTERNS 와
+    # 반드시 동일해야 합니다. 스크립트가 실행 가능한 기준이고 이 블록은 omp
+    # 런타임이 직접 읽는 사본입니다. 어긋나면 한쪽이 탐지한 값을 다른 쪽이
+    # 마스킹하지 못합니다. 검사: just verify-patterns
+    #
+    # 정규식은 이스케이프가 해석되지 않는 단일 인용 한 줄 스칼라로 적습니다.
+    # 내부의 작은따옴표만 두 번 반복합니다. 이전의 `|-` 블록 스칼라는 기계적
+    # 비교를 어렵게 만들어 사본 간 드리프트를 눈에 띄지 않게 했습니다.
     patterns:
-      - "(?i)-----BEGIN[ A-Z]*PRIVATE KEY-----"
-      - "(?i)(api[_-]?key|secret|token)[\"'\s:=]+[A-Za-z0-9_\-]{16,}"
-      - "sk-[a-zA-Z0-9]{32,}"
+      - '(?i)-----BEGIN[ A-Z]*PRIVATE KEY-----(?:.*?-----END[ A-Z]*PRIVATE KEY-----|.*)'
+      - '(?i)(api[_-]?key|secret|token|password)["''\s:=]+([A-Za-z0-9_\-]{16,})'
+      - '(?i)sk-[a-zA-Z0-9]{32,}'
+      - '(?i)ghp_[a-zA-Z0-9]{36}'
 
-# 5. 타 프로젝트와의 로컬 소통 및 Read-Only 메모리 접근 권한
 crossProject:
-  memoryReadAccess:
-    - "../other-project/.omp/data/context.db"
   ipcDirectories:
     enabled: true
     baseDir: "./"

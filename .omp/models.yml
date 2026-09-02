@@ -1,5 +1,4 @@
 models:
-  # 기본 모델 (Primary)
   claude_fable_primary:
     provider: anthropic
     model: claude-fable-5
@@ -14,7 +13,6 @@ models:
     contextWindow: 200000
     description: "Claude Opus 5 (Primary)"
 
-  # 폴백 모델 (Fallback)
   claude_sonnet_fallback:
     provider: anthropic
     model: claude-sonnet-5
@@ -38,8 +36,10 @@ models:
 
 failoverRouting:
   strategy: sequential
+  # claude_fable_primary is excluded while it is failing. Its definition is
+  # kept above so it can be restored by re-inserting one line here.
+  # Remaining models are pulled forward to fill the vacated slots.
   sequence:
-    - claude_fable_primary
     - claude_opus_primary
     - claude_sonnet_fallback
     - gemini_flash_fallback
